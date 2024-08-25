@@ -3,6 +3,7 @@ from flask_cors import CORS
 import speech_recognition as sr
 import pyttsx3
 import threading
+import io
 
 app = Flask(__name__)
 CORS(app)
@@ -57,6 +58,27 @@ def start_listening():
 def stop_listening():
     speech_recognizer.keep_listening = False
     return jsonify({"status": "Recording stopped"})
+
+@app.route('/upload', methods=['POST'])
+def upload_audio():
+    audio_file = request.files['audio']
+    audio_bytes = io.BytesIO(audio_file.read())
+    audio = sr.AudioFile(audio_bytes)
+    
+    try:
+        with audio as source:
+            audio_data = sr.Recognizer().record(source)
+            text = sr.Recognizer().recognize_google(audio_data)
+            text = text.lower()
+            print(f"Recognized Text from uploaded audio: {text}")
+            speech_recognizer.responses.append(text)
+            return jsonify({"status": "Audio processed", "text": text})
+    except sr.RequestError as e:
+        print(f"Could not request results; {e}")
+        return jsonify({"status": "Error", "message": str(e)}), 500
+    except sr.UnknownValueError:
+        print("Could not understand audio, Please Speak Again.")
+        return jsonify({"status": "Error", "message": "Could not understand audio"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
