@@ -1,14 +1,19 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import speech_recognition as sr
 import pyttsx3
 import threading
 
+app = Flask(__name__)
+CORS(app)
+
 class SpeechRecognizer:
     def __init__(self):
         self.r = sr.Recognizer()
         self.responses = []
-        self.start_recognition()
+        self.keep_listening = False
+        self.listen_thread = threading.Thread(target=self.start_recognition)
+        self.listen_thread.start()
 
     def SpeakText(self, command):
         engine = pyttsx3.init()
@@ -19,45 +24,39 @@ class SpeechRecognizer:
         try:
             with sr.Microphone() as source2:
                 self.r.adjust_for_ambient_noise(source2, duration=0.5)
+                print("Listening...")
                 audio2 = self.r.listen(source2)
+                print("Recognizing...")
                 MyText = self.r.recognize_google(audio2)
                 MyText = MyText.lower()
-                if "make this as side heading:" in MyText:
-                    final_text = MyText.split("make this as side heading:")[1].strip()
-                    return f"{final_text.upper()}:"
-                elif "make this as text" in MyText:
-                    final_text = MyText.split("make this as text:")[1].strip()
-                    return final_text
-                elif "make this as a point" in MyText:
-                    final_text = MyText.split("make this as a point:")[1].strip()
-                    return f"* {final_text}"
-                elif "stop listening" in MyText:
-                    print("Stopping")
-                    return "Listening stopped"
-                else:
-                    tts_thread = threading.Thread(target=self.SpeakText, args=(MyText,))
-                    tts_thread.start()
-                    return MyText
+                print(f"Recognized Text: {MyText}")
+                self.responses.append(MyText)  # Store response
+
         except sr.RequestError as e:
             print(f"Could not request results; {e}")
-            return "Request Error"
         except sr.UnknownValueError:
-            print("Please Speak")
-            return ""  # Replaced unknown error
+            print("Could not understand audio, Please Speak Again.")
 
     def start_recognition(self):
-        # Call recognize_speech method automatically
-        responseStr = self.recognize_speech()
-        if responseStr:
-            self.responses.append(responseStr)
+        while True:
+            if self.keep_listening:
+                self.recognize_speech()
 
-app = Flask(__name__)
-CORS(app)
 speech_recognizer = SpeechRecognizer()
 
 @app.route('/')
-def myfun():
+def get_responses():
     return jsonify(speech_recognizer.responses)
+
+@app.route('/start', methods=['POST'])
+def start_listening():
+    speech_recognizer.keep_listening = True
+    return jsonify({"status": "Recording started"})
+
+@app.route('/stop', methods=['POST'])
+def stop_listening():
+    speech_recognizer.keep_listening = False
+    return jsonify({"status": "Recording stopped"})
 
 if __name__ == '__main__':
     app.run(debug=True)
