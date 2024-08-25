@@ -11,7 +11,6 @@ itsdangerous==2.2.0
 Jinja2==3.1.4
 MarkupSafe==2.1.5
 PyAudio==0.2.14
-pypiwin32==223
 pyttsx3==2.91
 requests==2.32.3
 SpeechRecognition==3.10.4
