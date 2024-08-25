@@ -9,10 +9,6 @@ app = Flask(__name__)
 CORS(app)
 responses = [] 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 def SpeakText(command):
     engine = pyttsx3.init()
     engine.say(command)
@@ -48,7 +44,7 @@ def recognize_speech():
         print("Please Speak")
         return ""  # Replaced unknown error
 
-@app.route('/api/home')
+@app.route('/')
 def myfun():
     responseStr = recognize_speech()
     responses.append(responseStr)
